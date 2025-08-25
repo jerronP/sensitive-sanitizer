@@ -1,0 +1,13 @@
+{
+  "name": "playwright-ai-snapshot",
+  "version": "1.0.0",
+  "description": "Playwright project with AI-like action executor and snapshot generator (shadow roots + iframes).",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
