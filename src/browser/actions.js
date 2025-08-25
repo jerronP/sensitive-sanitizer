@@ -1,6 +1,7 @@
 /**
  * Utilities for executing Playwright actions, including shadow DOM traversal.
  */
+
 export async function enterShadowChain(page, prerequisite) {
   let context = page;
   if (!prerequisite || prerequisite.length === 0) return context;
@@ -61,20 +62,131 @@ export async function findInputInContext(context, targetStr) {
 export async function executeActions(page, actions) {
   for (const step of actions) {
     const { playwrightAction, prerequisite } = step;
+
     switch (playwrightAction.action) {
+      /**
+       * Navigation
+       */
       case "goto":
-        await page.goto(playwrightAction.url);
+        await page.goto(playwrightAction.url, { waitUntil: "domcontentloaded" });
         break;
+
+      /**
+       * Input field typing
+       */
       case "input": {
         const context = await enterShadowChain(page, prerequisite ?? []);
         const elHandle = await findInputInContext(context, playwrightAction.target);
         if (!elHandle) throw new Error(`Input not found for target "${playwrightAction.target}"`);
         const el = elHandle.asElement();
         if (!el) throw new Error("Target is not an element.");
-        await el.fill("");
+        await el.fill(""); // clear first
         await el.type(playwrightAction.value);
         break;
       }
+
+      /**
+       * Click action
+       */
+      case "click": {
+        const context = await enterShadowChain(page, prerequisite ?? []);
+        const elHandle = await context.evaluateHandle(
+          (root, selector) => root.querySelector(selector),
+          playwrightAction.target
+        );
+        if (!elHandle) throw new Error(`Click target not found: "${playwrightAction.target}"`);
+        const el = elHandle.asElement();
+        if (!el) throw new Error("Target is not an element.");
+        await el.click();
+        break;
+      }
+
+      /**
+       * Select dropdown
+       */
+      case "select": {
+        const context = await enterShadowChain(page, prerequisite ?? []);
+        const elHandle = await context.evaluateHandle(
+          (root, selector) => root.querySelector(selector),
+          playwrightAction.target
+        );
+        if (!elHandle) throw new Error(`Select target not found: "${playwrightAction.target}"`);
+        const el = elHandle.asElement();
+        await el.selectOption(playwrightAction.value);
+        break;
+      }
+
+      /**
+       * Check a checkbox
+       */
+      case "check": {
+        const context = await enterShadowChain(page, prerequisite ?? []);
+        const elHandle = await context.evaluateHandle(
+          (root, selector) => root.querySelector(selector),
+          playwrightAction.target
+        );
+        if (!elHandle) throw new Error(`Checkbox not found: "${playwrightAction.target}"`);
+        const el = elHandle.asElement();
+        await el.check();
+        break;
+      }
+
+      /**
+       * Uncheck a checkbox
+       */
+      case "uncheck": {
+        const context = await enterShadowChain(page, prerequisite ?? []);
+        const elHandle = await context.evaluateHandle(
+          (root, selector) => root.querySelector(selector),
+          playwrightAction.target
+        );
+        if (!elHandle) throw new Error(`Checkbox not found: "${playwrightAction.target}"`);
+        const el = elHandle.asElement();
+        await el.uncheck();
+        break;
+      }
+
+      /**
+       * Hover
+       */
+      case "hover": {
+        const context = await enterShadowChain(page, prerequisite ?? []);
+        const elHandle = await context.evaluateHandle(
+          (root, selector) => root.querySelector(selector),
+          playwrightAction.target
+        );
+        if (!elHandle) throw new Error(`Hover target not found: "${playwrightAction.target}"`);
+        const el = elHandle.asElement();
+        await el.hover();
+        break;
+      }
+
+      /**
+       * Press a key
+       */
+      case "press": {
+        const context = await enterShadowChain(page, prerequisite ?? []);
+        const elHandle = await context.evaluateHandle(
+          (root, selector) => root.querySelector(selector),
+          playwrightAction.target
+        );
+        if (!elHandle) throw new Error(`Press target not found: "${playwrightAction.target}"`);
+        const el = elHandle.asElement();
+        await el.press(playwrightAction.key);
+        break;
+      }
+
+      /**
+       * Wait for selector
+       */
+      case "waitForSelector": {
+        const context = await enterShadowChain(page, prerequisite ?? []);
+        await context.waitForSelector(playwrightAction.target, {
+          state: playwrightAction.state || "visible",
+        });
+        break;
+      }
+
       default:
         throw new Error(`Action "${playwrightAction.action}" not implemented.`);
     }
